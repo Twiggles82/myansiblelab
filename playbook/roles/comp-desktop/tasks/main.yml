@@ -1,0 +1,36 @@
+---
+
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
+
+- name: Create temp folder
+  win_shell: new-item C:\Temp -itemtype directory
+  ignore_errors: yes
+
+- name: change DNS server
+  when: not ansible_windows_domain_member
+  win_dns_client:
+    adapter_names: '*'
+    ipv4_addresses: "{{ hostvars[groups['ad-comp1'][0]]['groups']['ad-comp1'] }}"
+
+- name: Deploy ComputerManagementDsc module
+  win_psmodule:
+    name: ComputerManagementDsc
+    state: present
+
+- name: Add computer to domain
+  win_dsc:
+    resource_name: Computer
+    Name: 'comp-desktop1'
+    DomainName:  "{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ comp_dom_admin_password }}"
+  register: compdesktop
+
+- name: reboot after domain joined
+  win_reboot:
+  when: compdesktop.reboot_required
+
+- name: Wait for system to become reachable over WinRM
+  wait_for_connection:
+    timeout: 900

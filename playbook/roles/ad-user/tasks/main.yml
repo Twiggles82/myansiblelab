@@ -1,0 +1,184 @@
+---
+
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
+  
+- name: ensure required powershell module is present
+  win_psmodule:
+    name: ActiveDirectoryDsc
+    state: present
+
+- name: change DNS server
+  when: not ansible_windows_domain_member
+  win_dns_client:
+    adapter_names: '*'
+    ipv4_addresses: "{{ hostvars[groups['ad-root1'][0]]['groups']['ad-root1'] }}"
+
+- name: enable windows features
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_ad
+  ignore_errors: yes
+  loop:
+    - AD-Domain-Services
+    - RSAT-AD-PowerShell
+    - RSAT-AD-TOOLS
+    - GPMC
+
+- name: add ugly as a child domain
+  win_dsc:
+    resource_name: ADDomain
+    DomainName: "{{ user_domain_name }}"
+    ParentDomainName: "{{ root_domain_name }}"
+    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    SafemodeAdministratorPassword_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}"
+    SafemodeAdministratorPassword_password: "{{ user_dom_admin_password }}"
+  register: add_domain
+  ignore_errors: yes
+
+- name: reboot after the domain is added
+  win_reboot:
+  when: add_domain.reboot_required
+
+- name: wait for AD domain
+  win_dsc:
+    resource_name: WaitForADDomain
+    DomainName: "{{ user_domain_name }}"
+
+# Splits the name up so compass.local becomes 'DC=compass,DC=local'
+- name: set parent dn
+  set_fact:
+    parent_dn: "DC={{ user_domain_name.split('.') | join(',DC=') }}"
+
+- name: add domain admin user
+  win_dsc:
+    resource_name: ADUser
+    UserName: "{{ user_dom_admin_username }}"
+    UserPrincipalName: "{{ user_dom_admin_username }}@{{ user_domain_name }}"
+    Password_username: "{{ user_dom_admin_username }}"
+    Password_password: "{{ user_dom_admin_password }}"
+    DomainName: "{{ user_domain_name }}"
+    Enabled: True
+    GivenName: "{{ user_dom_admin_username }}"
+    Surname: user
+    Company: dxc
+    EmailAddress: "{{ user_dom_admin_username }}@{{ user_domain_name }}"
+    PasswordNeverExpires: True
+    Ensure: Present
+  ignore_errors: yes
+
+- name: add user admin user to Domain Admins group
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: Domain Admins
+    MembersToInclude: "{{ user_dom_admin_username }}"
+  ignore_errors: yes
+
+- name: add domain users
+  win_dsc:
+    resource_name: ADUser
+    UserName: "{{ item.username }}"
+    UserPrincipalName: "{{ item.username }}@{{ user_domain_name }}"
+    Password_username: "{{ item.username }}"
+    Password_password: "{{ users_password }}"
+    DomainName: "{{ user_domain_name }}"
+    Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}"
+    Credential_password: "{{ user_dom_admin_password }}"
+    Enabled: True
+    GivenName: "{{ item.name }}"
+    Surname: user
+    Company: AnsibleByRedHat
+    EmailAddress: "{{ item.username }}@{{ user_domain_name }}"
+    Ensure: Present
+  loop: "{{ ad_users }}"
+  ignore_errors: yes
+
+- name: add domain users to groups
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: "{{ item }}"
+    GroupScope: Universal
+    MembersToInclude: "{{ ad_users | map(attribute='username') | list }}"
+  loop:
+    - AllowRDPUgly
+
+- name: Add AllowRDPUgly to Built-In Remote Desktop Users
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: "Remote Desktop Users"
+    MembersToInclude: AllowRDPUgly
+  tags: allowrdp
+
+- name: ensure registry service is running
+  win_dsc:
+    resource_name: Service
+    Name: TermService
+    StartupType: Automatic
+    State: Running
+
+- name: "Install GroupPolicyDSC"
+  win_psmodule:
+    name: GroupPolicyDSC
+    state: present
+
+- name: "Create UserGPO"
+  win_dsc:
+    resource_name: GroupPolicy
+    name: "UserGPO"
+    status: allsettingsenabled
+    ensure: present
+
+- name: "Edit UserGPO USER values#1"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "UserGPO"
+    key: "HKCU\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
+    valuename: "AEPolicy"
+    valuetype: "DWORD"
+    value: 7
+
+- name: "Edit UserGPO USER values#2"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "UserGPO"
+    key: "HKCU\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
+    valuename: "OfflineExpirationPercent"
+    valuetype: "DWORD"
+    value: 10
+
+- name: "Link UserGPO to ugly.usz.local domain"
+  win_dsc:
+    resource_name: GPLink
+    GPOName: "UserGPO"
+    Path: "DC=ugly,DC=usz,DC=local"
+    Enabled: "yes"
+
+- name: "Create AllowRDPUglyGPO"
+  win_dsc:
+    resource_name: GroupPolicy
+    name: "AllowRDPUglyGPO"
+    status: allsettingsenabled
+    ensure: present
+  tags: uglygpo
+
+- name: "Edit AllowRDPUglyGPO COMPUTER values#1"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "AllowRDPUglyGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Terminal Services"
+    valuename: "fDenyTSConnections"
+    valuetype: "DWORD"
+    value: 0
+  tags: uglygpo
+
+- name: "Link AllowRDPUglyGPO to ugly.usz.local domain"
+  win_dsc:
+    resource_name: GPLink
+    GPOName: "AllowRDPUglyGPO"
+    Path: "DC=ugly,DC=usz,DC=local"
+    Enabled: "yes"
+  tags: uglygpo

@@ -1,0 +1,22 @@
+---
+ad_users:
+  - name: user1comp
+    username: user1comp
+    email: user1comp
+  - name: user2comp
+    username: user2comp
+    email: user2comp
+  - name: user3comp
+    username: user3comp
+    email: user3comp
+  - name: user4comp
+    username: user4comp
+    email: user4comp
+
+ad_groups:
+  - name: usz-comp
+    scope: global
+
+child_ous:
+  - name: green-comp
+    description: Green Env organization

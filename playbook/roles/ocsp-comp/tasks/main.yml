@@ -1,0 +1,74 @@
+---
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
+
+- name: change DNS server
+  when: not ansible_windows_domain_member
+  win_dns_client:
+    adapter_names: '*'
+    ipv4_addresses: "{{ hostvars[groups['ad-comp1'][0]]['groups']['ad-comp1'] }}"
+ 
+- name: Deploy ComputerManagementDsc module
+  win_psmodule:
+    name: ComputerManagementDsc
+    state: present
+
+- name: Add computer to domain
+  win_dsc:
+    resource_name:  Computer
+    Name: 'ocsp-comp1'
+    DomainName:  "{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ comp_dom_admin_password }}"
+  register: ocsp
+ 
+- name: Reboot after domain joined
+  win_reboot:
+  when: ocsp.reboot_required
+
+- name: Wait for system to become reachable over WinRM
+  wait_for_connection:
+    timeout: 900
+
+- name: Deploy ActiveDirectoryCSDsc module
+  win_psmodule:
+    name: ActiveDirectoryCSDsc
+    state: present
+
+- name: enable ADCS-Cert-Authority feature
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_ocsp
+  ignore_errors: yes
+  loop:
+    - ADCS-Online-Cert
+    - RSAT-Online-Responder
+
+- name: Install OCSP Online Responder - configure wizard
+  win_dsc:
+    resource_name: AdcsOnlineResponder
+    IsSingleInstance: 'Yes'
+    Ensure: Present
+    Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ comp_dom_admin_password }}"
+  register: install_ocsp
+
+- name: Run PowerShell script to create  Online Responder Revocation Configuration
+  ansible.windows.win_powershell:
+    script: | 
+      Install-Module PSPKI -Force
+      Import-Module PSPKI -Force
+      $CA = Get-CertificationAuthority "ca-comp1.compass.usz.local" -Enterprise
+      Connect-OnlineResponder "ocsp-comp1.compass.usz.local" | Add-OnlineResponderRevocationConfiguration -Name "usz-comp-ca-ocsp" -CA $ca | Set-OnlineResponderRevocationConfiguration `
+        -SigningCertTemplate "OCSPResponseSigning" `
+        -SigningServer "ca-comp1.compass.usz.local" `
+        -SigningFlag "Silent, SigningCertAutoRenewal, ForceDelegatedCert, AutoDiscoverSigningCert, ResponderIdKeyHash, SigningCertAutoEnrollment" `
+        -HashAlgorithm (New-Object System.Security.Cryptography.Oid2 "sha256", $true)
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    ansible_become_password: "{{ comp_dom_admin_password }}"

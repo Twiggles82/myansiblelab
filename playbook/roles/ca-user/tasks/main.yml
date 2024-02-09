@@ -1,0 +1,213 @@
+---
+
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
+
+- name: Create folder for JSON templates to be copied into
+  win_shell: new-item C:\Temp -itemtype directory
+  ignore_errors: yes
+
+- name: change DNS server
+  when: not ansible_windows_domain_member
+  win_dns_client:
+    adapter_names: '*'
+    ipv4_addresses: "{{ hostvars[groups['ad-user1'][0]]['groups']['ad-user1'] }}"
+
+- name: Deploy ComputerManagementDsc module
+  win_psmodule:
+    name: ComputerManagementDsc
+    state: present
+
+- name: enable IIS feature
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_iis
+  ignore_errors: yes
+  loop:
+    - Web-Server
+
+- name: Add computer to domain
+  win_dsc:
+    resource_name:  Computer
+    Name: 'ca-user1'
+    DomainName:  "{{ user_domain_name }}.{{ root_domain_name }}"
+    Credential_username: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+  register: certauth
+
+- name: Reboot after domain joined and IIS installed
+  win_reboot:
+  when: certauth.reboot_required
+
+- name: Wait for system to become reachable over WinRM
+  wait_for_connection:
+    timeout: 900
+
+- name: Deploy ActiveDirectoryCSDsc module
+  win_psmodule:
+    name: ActiveDirectoryCSDsc
+    state: present
+
+- name: enable ADCS-Cert-Authority feature
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_adcs
+  ignore_errors: yes
+  loop:
+    - ADCS-Cert-Authority
+
+- name: Create Enterprise Certificate Authority
+  win_dsc:
+    IsSingleInstance: "Yes"
+    resource_name:  AdcsCertificationAuthority
+    CAType: 'EnterpriseRootCA'
+    CryptoProviderName: 'RSA#Microsoft Software Key Storage Provider'
+    KeyLength: 2048
+    HashAlgorithmName: 'SHA256'
+    Credential_username: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    CACommonName: user-usz-ca
+    CADistinguishedNameSuffix: DC=user,DC=usz,DC=local
+    ValidityPeriod: 'Years'
+    ValidityPeriodUnits: 10
+    DatabaseDirectory: "C:\\Windows\\system32\\CertLog"
+    LogDirectory: "C:\\Windows\\system32\\CertLog"
+    Ensure: Present
+  register: ca_configured
+
+- name: enable additional features for CA
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_adcs
+  ignore_errors: yes
+  loop:
+    - ADCS-Enroll-Web-Pol
+    - ADCS-Web-Enrollment
+    - RSAT-ADCS
+    - RSAT-ADCS-mgmt
+    - AD-Domain-Services
+
+- name: Web Enrollment feature 
+  win_dsc:
+    resource_name:  AdcsWebEnrollment
+    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    IsSingleInstance: "Yes"
+    Ensure: Present
+  register: AdcsWebEnrollment_configured
+
+- name: Authority Information Access 
+  win_dsc:
+    resource_name:  AdcsAuthorityInformationAccess
+    IsSingleInstance: "Yes"
+    OcspUri: "http://ocsp-user1.ugly.usz.local/ocsp"
+    AllowRestartService: True
+
+- name: Copy USER-TEMPLATE
+  win_copy:
+    src: ./User-Modified.json
+    dest: C:\Temp\User-Modified.json
+
+- name: Install AdcsTemplate module
+  win_shell: "Install-Module AdcsTemplate -Force"
+
+- name: Import AdcsTemplate module
+  win_shell: "Import-Module AdcsTemplate -Force"
+
+- name: Change startup type for Active Directory Web Services service
+  win_shell: "Set-Service -Name ADWS -StartupType Automatic"
+
+- name: Start Active Directory Web Services service
+  win_shell: "Start-Service -Name ADWS"
+
+# USER TEMPLATE
+- name: Get whoami information - domain
+  win_whoami:
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
+    ansible_become_password: "{{ root_dom_admin_password }}"
+
+- name: Declare PowerShell script to use for USER template
+  set_fact:
+    install_command_user: |-
+      New-ADCSTemplate -DisplayName User-Modified -JSON (Get-Content C:\Temp\User-Modified.json -Raw) -Identity "Domain Users" -AutoEnroll -Publish
+
+- name: Show command declared above for USER template
+  debug:
+    var: install_command_user
+    verbosity: 0
+
+- name: Create new user template run as domain admin
+  win_shell: "{{ install_command_user }}"
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
+    ansible_become_password: "{{ root_dom_admin_password }}"
+
+# - name: WHOAMI
+#   win_command: whoami.exe
+
+# - name: Create new COMPUTER template
+#   become_method: runsas
+#   become: yes
+#   become_user: "{{ domain_admin_username }}@{{ user_domain_name }}"
+#   win_shell: "{{ install_command_comp }}"
+
+# - name: Declare PowerShell script to use for USER template
+#   set_fact:
+#     install_command_user: |-
+#       New-ADCSTemplate -DisplayName User-Modified -JSON (Get-Content C:\Temp\User-Modified.json -Raw) -Identity "Domain Users" -AutoEnroll -Publish
+
+# - name: Show command declared above for USER template
+#   debug:
+#     var: install_command_user
+#     verbosity: 0
+
+# - name: Create new USER template
+#   become: true
+#   become_user: dxcadmin
+#   win_shell: "{{ install_command_user }}"
+
+
+# - name: Run powershell to get the thumbprint hash
+#   ansible.windows.win_powershell:
+#     script: |
+#          (Get-ChildItem cert:\LocalMachine\CA  | where-object { $_.Subject -like "*usz*" } | Select-Object -Last 1).Thumbprint
+#   register: hash
+
+# - name: Print information from gathering thumbprint hash
+#   ansible.builtin.debug:
+#     var: hash
+#     verbosity: 2
+
+# - name: Set value of SSL hash gathered above
+#   set_fact:
+#     thumbprint: "{{ hash.output[0] }}"
+
+# - debug: 
+#    msg: '{{ thumbprint}}'
+
+# # - name: Declare $Thumbprint as a PowerShell variable
+# #   ansible.windows.win_powershell:
+# #     script: |
+# #          $Thumbprint=(Get-ChildItem cert:\LocalMachine\CA  | where-object { $_.Subject -like "*usz*" } | Select-Object -Last 1).Thumbprint
+# #   register: PowerShellThumbprint
+
+# - name: Configure Certificate Enrollment Policy Web Service using PowerShell
+#   win_shell: Install-AdcsEnrollmentPolicyWebService -AuthenticationType Kerberos -SSLCertThumbprint "{{PowerShellThumbprint}}" -Force         
+#   Credential_username: "{{ domain_admin_username }}@{{ user_domain_name }}"
+#   Credential_password: "{{ domain_admin_password }}"
+
+# # - win_command: whoami.exe /all

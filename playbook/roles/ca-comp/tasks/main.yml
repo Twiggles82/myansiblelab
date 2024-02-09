@@ -1,0 +1,182 @@
+---
+
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
+
+- name: Create folder for JSON templates to be copied into
+  win_shell: new-item C:\Temp -itemtype directory
+  ignore_errors: yes
+
+- name: change DNS server
+  when: not ansible_windows_domain_member
+  win_dns_client:
+    adapter_names: '*'
+    ipv4_addresses: "{{ hostvars[groups['ad-comp1'][0]]['groups']['ad-comp1'] }}"
+
+- name: Deploy ComputerManagementDsc module
+  win_psmodule:
+    name: ComputerManagementDsc
+    state: present
+
+- name: enable IIS feature
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_iis
+  ignore_errors: yes
+  loop:
+    - Web-Server
+
+- name: Add computer to domain
+  win_dsc:
+    resource_name:  Computer
+    Name: 'ca-comp1'
+    DomainName:  "{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ comp_dom_admin_password }}"
+  register: certauth
+
+- name: Reboot after domain joined and IIS installed
+  win_reboot:
+  when: certauth.reboot_required
+
+- name: Wait for system to become reachable over WinRM
+  wait_for_connection:
+    timeout: 900
+
+- name: Deploy ActiveDirectoryCSDsc module
+  win_psmodule:
+    name: ActiveDirectoryCSDsc
+    state: present
+
+- name: enable ADCS-Cert-Authority feature
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_adcs
+  ignore_errors: yes
+  loop:
+    - ADCS-Cert-Authority
+
+- name: Create Enterprise Certificate Authority
+  win_dsc:
+    IsSingleInstance: "Yes"
+    resource_name:  AdcsCertificationAuthority
+    CAType: 'EnterpriseRootCA'
+    CryptoProviderName: 'RSA#Microsoft Software Key Storage Provider'
+    KeyLength: 2048
+    HashAlgorithmName: 'SHA256'
+    Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}"
+    Credential_password: "{{ comp_dom_admin_password }}"
+    CACommonName: comp-usz-ca
+    CADistinguishedNameSuffix: DC=compass,DC=usz,DC=local
+    ValidityPeriod: 'Years'
+    ValidityPeriodUnits: 10
+    DatabaseDirectory: "C:\\Windows\\system32\\CertLog"
+    LogDirectory: "C:\\Windows\\system32\\CertLog"
+    Ensure: Present
+  register: ca_configured
+
+- name: enable additional features for CA
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_adcs
+  ignore_errors: yes
+  loop:
+    - ADCS-Enroll-Web-Pol
+    - ADCS-Web-Enrollment
+    - RSAT-ADCS
+    - RSAT-ADCS-mgmt
+    - AD-Domain-Services
+
+- name: Web Enrollment feature 
+  win_dsc:
+    resource_name:  AdcsWebEnrollment
+    Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}"
+    Credential_password: "{{ comp_dom_admin_password }}"
+    IsSingleInstance: "Yes"
+    Ensure: Present
+  register: AdcsWebEnrollment_configured
+
+- name: Copy COMPUTER-TEMPLATE
+  win_copy:
+    src: ./Computer-Modified.json
+    dest: C:\Temp\Computer-Modified.json
+
+- name: Install AdcsTemplate module
+  win_shell: "Install-Module AdcsTemplate -Force"
+
+- name: Import AdcsTemplate module
+  win_shell: "Import-Module AdcsTemplate -Force"
+
+- name: Change startup type for Active Directory Web Services service
+  win_shell: "Set-Service -Name ADWS -StartupType Automatic"
+
+- name: Start Active Directory Web Services service
+  win_shell: "Start-Service -Name ADWS"
+
+# COMPUTER TEMPLATE
+- name: Get whoami information - domain
+  win_whoami:
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    ansible_become_password: "{{ comp_dom_admin_password }}"
+  tags: ocsp
+
+- name: Declare PowerShell script to use for COMPUTER template
+  set_fact:
+    install_command_comp: |-
+      New-ADCSTemplate -DisplayName Computer-Modified -JSON (Get-Content C:\Temp\Computer-Modified.json -Raw) -Identity "Domain Computers" -AutoEnroll -Publish
+  tags: ocsp
+
+- name: Show command declared above for COMPUTER template
+  debug:
+    var: install_command_comp
+    verbosity: 0
+  tags: ocsp
+
+- name: Create new COMPUTER template run as domain admin
+  win_shell: "{{ install_command_comp }}"
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    ansible_become_password: "{{ comp_dom_admin_password }}"
+  tags: ocsp
+
+# Modify the existing OCSPResponseSigning template - allow OCSP server to access
+- name: Modify the existing OCSPResponseSigning template
+  ansible.windows.win_powershell:
+    script: | 
+      Set-ADCSTemplateACL -DisplayName "OCSP Response Signing" -Identity 'compass.usz.local\OCSP-comp1$' -Enroll -AutoEnroll -Publish
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    ansible_become_password: "{{ comp_dom_admin_password }}"
+  tags: ocsp
+
+# # Publish OCSP Template
+# - name: Publish OCSP Template
+#   win_dsc:
+#     resource_name: AdcsTemplate
+#     name: OCSPResponseSigning
+#     Ensure: Present
+#   tags: ocsp
+
+- name: Authority Information Access 
+  win_dsc:
+    resource_name:  AdcsAuthorityInformationAccess
+    IsSingleInstance: "Yes"
+    OcspUri: "http://ocsp-comp1.compass.usz.local/ocsp"
+    AllowRestartService: True
+  tags: ocsp

@@ -1,0 +1,137 @@
+---
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
+  
+- name: ensure required powershell module is present
+  win_psmodule:
+    name: ActiveDirectoryDsc
+    state: present
+
+- name: enable windows features
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_ad
+  ignore_errors: yes
+  loop:
+    - AD-Domain-Services
+    - RSAT-AD-PowerShell
+    - RSAT-AD-TOOLS
+    - GPMC
+
+- name: add a new domain
+  win_dsc:
+    resource_name: ADDomain
+    DomainName: "{{ root_domain_name }}"
+    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    SafemodeAdministratorPassword_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    SafemodeAdministratorPassword_password: "{{ root_dom_admin_password }}"
+  register: add_domain
+  ignore_errors: yes
+
+- name: reboot after the domain is added
+  win_reboot:
+  when: add_domain.reboot_required
+
+- name: wait for AD domain
+  win_dsc:
+    resource_name: WaitForADDomain
+    DomainName: "{{ root_domain_name }}"
+
+- name: set parent dn
+  set_fact:
+    parent_dn: "DC={{ root_domain_name.split('.') | join(',DC=') }}"
+
+- name: adjust password policy
+  win_dsc:
+    resource_name: ADDomainDefaultPasswordPolicy
+    DomainName: "{{ root_domain_name }}"
+    ComplexityEnabled: False
+    MinPasswordLength: 8
+    PasswordHistoryCount: 10
+
+- name: add child OU
+  win_dsc:
+    resource_name: ADOrganizationalUnit
+    Name: "{{ item.name }}"
+    Path: "{{ parent_dn }}"
+    Description: "{{ item.description }}"
+    Ensure: Present
+  register: child_ou
+  loop: "{{ child_ous }}"
+
+- name: add groups
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: "{{ item.name }}"
+    GroupScope: "{{ item.scope }}"
+    Ensure: Present
+  loop: "{{ ad_groups }}"
+
+- name: create dxcadminroot user
+  win_dsc:
+    resource_name: ADUser
+    UserName: "{{ root_dom_admin_username }}"
+    UserPrincipalName: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Password_username: "{{ root_dom_admin_username }}"
+    Password_password: "{{ root_dom_admin_password }}"
+    DomainName: "{{ root_domain_name }}"
+    Enabled: True
+    GivenName: "{{ root_dom_admin_username }}"
+    Surname: user
+    Company: dxc
+    EmailAddress: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    PasswordNeverExpires: True
+    Ensure: Present
+  ignore_errors: yes
+
+- name: add dxcadminroot user to Enterprise Admins group
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: Enterprise Admins
+    MembersToInclude: "{{ root_dom_admin_username }}"
+  ignore_errors: yes
+
+- name: add domain users
+  win_dsc:
+    resource_name: ADUser
+    UserName: "{{ item.username }}"
+    UserPrincipalName: "{{ item.username }}@{{ root_domain_name }}"
+    Password_username: "{{ item.username }}"
+    Password_password: "{{ users_password }}"
+    DomainName: "{{ root_domain_name }}"
+    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    Enabled: True
+    GivenName: "{{ item.name }}"
+    Surname: user
+    Company: AnsibleByRedHat
+    EmailAddress: "{{ item.username }}@{{ root_domain_name }}"
+    Ensure: Present
+  loop: "{{ ad_users }}"
+  ignore_errors: yes
+
+- name: add domain users to groups
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: "{{ item }}"
+    MembersToInclude: "{{ ad_users | map(attribute='username') | list }}"
+  loop:
+    - Ansible Users
+    - Remote Desktop Users
+    - Domain Admins
+
+- name: ensure registry service is running
+  win_dsc:
+    resource_name: Service
+    Name: TermService
+    StartupType: Automatic
+    State: Running
+
+- name: "Install GroupPolicyDSC"
+  win_psmodule:
+    name: GroupPolicyDSC
+    state: present

@@ -1,0 +1,22 @@
+---
+ad_users:
+  - name: user1root
+    username: user1root
+    email: user1root
+  - name: user2root
+    username: user2root
+    email: user2root
+  - name: user3root
+    username: user3root
+    email: user3root
+  - name: user4root
+    username: user4root
+    email: user4root
+
+ad_groups:
+  - name: usz-root
+    scope: global
+
+child_ous:
+  - name: green-root
+    description: Green-root Env organization
