@@ -1,5 +1,5 @@
 [ad-root]
-10.180.25.36
+10.180.25.36 ansible_user=ansible ansible_password=QWErty1.2.3.4.5
 
 [ad-comp]
 10.180.25.65
