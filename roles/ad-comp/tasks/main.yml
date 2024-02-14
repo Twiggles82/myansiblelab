@@ -6,6 +6,7 @@
 - name: ensure required powershell module is present
   win_psmodule:
     name: ActiveDirectoryDsc
+    accept_license: yes
     state: present
 
 - name: change DNS server
