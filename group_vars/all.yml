@@ -4,7 +4,6 @@ ansible_ssh_port: 5986
 ansible_connection: winrm
 ansible_winrm_server_cert_validation: ignore
 ansible_become_method: runas
-ansible_winrm_authentication: ntlm
 
 root_domain_name: usz.local
 root_dom_admin_username: dxcadminroot
