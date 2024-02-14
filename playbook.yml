@@ -11,17 +11,17 @@
 #   roles:
 #     - ad-comp
 
-# computer test desktop
-- hosts: comp-desktop
-  gather_facts: True
-  roles:
-    - comp-desktop
+# # computer test desktop
+# - hosts: comp-desktop
+#   gather_facts: True
+#   roles:
+#     - comp-desktop
 
-# comp OCSP
-- hosts: ocsp-comp
-  gather_facts: True
-  roles:
-    - ocsp-comp
+# # comp OCSP
+# - hosts: ocsp-comp
+#   gather_facts: True
+#   roles:
+#     - ocsp-comp
 
 # comp certificate authority
 - hosts: ca-comp
