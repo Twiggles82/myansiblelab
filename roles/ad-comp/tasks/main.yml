@@ -13,7 +13,7 @@
   when: not ansible_windows_domain_member
   win_dns_client:
     adapter_names: '*'
-    ipv4_addresses: "{{ hostvars[groups['ad-root1'][0]]['groups']['ad-root1'] }}"
+    ipv4_addresses: "{{ hostvars[groups['ad-root'][0]]['groups']['ad-root'] }}"
 
 - name: enable windows features
   win_dsc:
