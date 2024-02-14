@@ -5,11 +5,11 @@
 #   roles:
 #     - ad-root
 
-# comp domain controller for compass.usz.local
-- hosts: ad-comp
-  gather_facts: True
-  roles:
-    - ad-comp
+# # comp domain controller for compass.usz.local
+# - hosts: ad-comp
+#   gather_facts: True
+#   roles:
+#     - ad-comp
 
 # computer test desktop
 - hosts: comp-desktop
