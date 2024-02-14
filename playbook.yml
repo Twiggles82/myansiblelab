@@ -1,9 +1,9 @@
 ---
 # root domain controller for usz.local
-- hosts: ad-root
-  gather_facts: True
-  roles:
-    - ad-root
+# - hosts: ad-root
+#   gather_facts: True
+#   roles:
+#     - ad-root
 
 # comp domain controller for compass.usz.local
 - hosts: ad-comp
