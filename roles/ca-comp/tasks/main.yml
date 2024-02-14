@@ -166,13 +166,13 @@
     ansible_become_password: "{{ comp_dom_admin_password }}"
   tags: ocsp
 
-# # Publish OCSP Template
-# - name: Publish OCSP Template
-#   win_dsc:
-#     resource_name: AdcsTemplate
-#     name: OCSPResponseSigning
-#     Ensure: Present
-#   tags: ocsp
+# Publish OCSP Template
+- name: Publish OCSP Template
+  win_dsc:
+    resource_name: AdcsTemplate
+    name: OCSPResponseSigning
+    Ensure: Present
+  tags: ocsp
 
 - name: Authority Information Access 
   win_dsc:
