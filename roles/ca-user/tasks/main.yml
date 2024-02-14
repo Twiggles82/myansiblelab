@@ -71,8 +71,8 @@
     CryptoProviderName: 'RSA#Microsoft Software Key Storage Provider'
     KeyLength: 2048
     HashAlgorithmName: 'SHA256'
-    Credential_username: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
-    Credential_password: "{{ root_dom_admin_password }}"
+    Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ user_dom_admin_password }}"
     CACommonName: user-usz-ca
     CADistinguishedNameSuffix: DC=user,DC=usz,DC=local
     ValidityPeriod: 'Years'
