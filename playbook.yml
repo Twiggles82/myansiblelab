@@ -23,11 +23,11 @@
 #   roles:
 #     - ocsp-comp
 
-# comp certificate authority
-- hosts: ca-comp
-  gather_facts: True
-  roles:
-    - ca-comp
+# # comp certificate authority
+# - hosts: ca-comp
+#   gather_facts: True
+#   roles:
+#     - ca-comp
 
 # user domain controller for ugly.usz.local
 - hosts: ad-user
