@@ -1,5 +1,5 @@
-ansible_user: "ansible"
-ansible_pass: "QWErty1.2.3.4.5"
+ansible_username: "ansible"
+ansible_password: "QWErty1.2.3.4.5"
 ansible_ssh_port: "5986"
 ansible_connection: "winrm"
 ansible_winrm_server_cert_validation: ignore
