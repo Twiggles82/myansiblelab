@@ -1,27 +1,27 @@
-ansible_username: "ansible"
-ansible_password: "QWErty1.2.3.4.5"
-ansible_ssh_port: "5986"
-ansible_connection: "winrm"
+ansible_username: ansible
+ansible_password: QWErty1.2.3.4.5
+ansible_ssh_port: 5986
+ansible_connection: winrm
 ansible_winrm_server_cert_validation: ignore
 ansible_become_method: runas
 ansible_winrm_authentication: ntlm
 
-root_domain_name: "usz.local"
+root_domain_name: usz.local
 root_dom_admin_username: dxcadminroot
-root_dom_admin_password: "QWErty1.2.3.4.5"
+root_dom_admin_password: QWErty1.2.3.4.5
 
-safe_admin_username: "safeadmin"
-safe_admin_password: "safepass"
+safe_admin_username: safeadmin
+safe_admin_password: safepass
 
-user_domain_name: "ugly"
+user_domain_name: ugly
 user_dom_admin_username: dxcadminuser
-user_dom_admin_password: "QWErty1.2.3.4.5"
+user_dom_admin_password: QWErty1.2.3.4.5
 
-comp_domain_name: "compass"
+comp_domain_name: compass
 comp_dom_admin_username: dxcadmincomp
-comp_dom_admin_password: "QWErty1.2.3.4.5"
+comp_dom_admin_password: QWErty1.2.3.4.5
 
 adfsservice_username: adfsservice
-adfsservice_password: "QWErty1.2.3.4.5"
+adfsservice_password: QWErty1.2.3.4.5
 
-users_password: "QWErty1.2.3.4.5"
+users_password: QWErty1.2.3.4.5
