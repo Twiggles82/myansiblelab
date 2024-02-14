@@ -35,8 +35,8 @@
     resource_name:  Computer
     Name: 'ca-user'
     DomainName:  "{{ user_domain_name }}.{{ root_domain_name }}"
-    Credential_username: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
-    Credential_password: "{{ root_dom_admin_password }}"
+    Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ user_dom_admin_password }}"
   register: certauth
 
 - name: Reboot after domain joined and IIS installed
