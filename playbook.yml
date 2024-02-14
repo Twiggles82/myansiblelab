@@ -1,51 +1,51 @@
 ---
-# # root domain controller for usz.local
-# - hosts: ad-root
-#   gather_facts: True
-#   roles:
-#     - ad-root
+# root domain controller for usz.local
+- hosts: ad-root
+  gather_facts: True
+  roles:
+    - ad-root
 
-# # comp domain controller for compass.usz.local
-# - hosts: ad-comp
-#   gather_facts: True
-#   roles:
-#     - ad-comp
+# comp domain controller for compass.usz.local
+- hosts: ad-comp
+  gather_facts: True
+  roles:
+    - ad-comp
 
-# # computer test desktop
-# - hosts: comp-desktop
-#   gather_facts: True
-#   roles:
-#     - comp-desktop
+# computer test desktop
+- hosts: comp-desktop
+  gather_facts: True
+  roles:
+    - comp-desktop
 
-# # comp OCSP
-# - hosts: ocsp-comp
-#   gather_facts: True
-#   roles:
-#     - ocsp-comp
+# comp OCSP
+- hosts: ocsp-comp
+  gather_facts: True
+  roles:
+    - ocsp-comp
 
-# # comp certificate authority
-# - hosts: ca-comp
-#   gather_facts: True
-#   roles:
-#     - ca-comp
+# comp certificate authority
+- hosts: ca-comp
+  gather_facts: True
+  roles:
+    - ca-comp
 
-# # user domain controller for ugly.usz.local
-# - hosts: ad-user
-#   gather_facts: True
-#   roles:
-#     - ad-user
+# user domain controller for ugly.usz.local
+- hosts: ad-user
+  gather_facts: True
+  roles:
+    - ad-user
 
-# # user test desktop
-# - hosts: user-desktop
-#   gather_facts: True
-#   roles:
-#     - user-desktop
+# user test desktop
+- hosts: user-desktop
+  gather_facts: True
+  roles:
+    - user-desktop
 
-# # user OCSP
-# - hosts: ocsp-user
-#   gather_facts: True
-#   roles:
-#     - ocsp-user
+# user OCSP
+- hosts: ocsp-user
+  gather_facts: True
+  roles:
+    - ocsp-user
 
 # user certificate authority
 - hosts: ca-user

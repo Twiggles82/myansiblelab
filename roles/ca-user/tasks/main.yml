@@ -4,7 +4,7 @@
   win_shell: Install-PackageProvider -Name Nuget -Force
 
 - name: Create folder for JSON templates to be copied into
-  win_shell: new-item C:\Temp -itemtype directory
+  win_shell: new-item C:\temp -itemtype directory
   ignore_errors: yes
 
 - name: change DNS server
@@ -105,67 +105,67 @@
     IsSingleInstance: "Yes"
     Ensure: Present
   register: AdcsWebEnrollment_configured
-  tags: fromhere
-  
-- name: Authority Information Access 
-  win_dsc:
-    resource_name:  AdcsAuthorityInformationAccess
-    IsSingleInstance: "Yes"
-    OcspUri: "http://ocsp-user.ugly.usz.local/ocsp"
-    AllowRestartService: True
-  tags: fromhere
-  
-- name: Copy USER-TEMPLATE
-  win_copy:
-    src: ./User-Modified.json
-    dest: C:\Temp\User-Modified.json
-  tags: fromhere
-  
-- name: Install AdcsTemplate module
-  win_shell: "Install-Module AdcsTemplate -Force"
 
-- name: Import AdcsTemplate module
-  win_shell: "Import-Module AdcsTemplate -Force"
-  tags: fromhere
+# ISSUE AT THIS PART WHEN RUNNING THAT SAYS: - fatal: [10.180.25.21]: FAILED! => {"changed": false, "module_version": "5.0.0", "msg": "Failed to invoke DSC Test method: CCertConfig::GetConfig: The system cannot find the file specified. 0x80070002 (WIN32: 2 ERROR_FILE_NOT_FOUND)", "reboot_required": false}
+# - name: Authority Information Access 
+#   win_dsc:
+#     resource_name:  AdcsAuthorityInformationAccess
+#     IsSingleInstance: "Yes"
+#     OcspUri: "http://ocsp-user.ugly.usz.local/ocsp"
+#     AllowRestartService: True
+#   tags: fromhere
   
-- name: Change startup type for Active Directory Web Services service
-  win_shell: "Set-Service -Name ADWS -StartupType Automatic"
-  tags: fromhere
+# - name: Copy USER-TEMPLATE
+#   win_copy:
+#     src: ./user-modified.json
+#     dest: C:\temp\user-modified.json
+#   tags: fromhere
   
-- name: Start Active Directory Web Services service
-  win_shell: "Start-Service -Name ADWS"
-  tags: fromhere
+# - name: Install AdcsTemplate module
+#   win_shell: "Install-Module AdcsTemplate -Force"
+
+# - name: Import AdcsTemplate module
+#   win_shell: "Import-Module AdcsTemplate -Force"
+#   tags: fromhere
   
-# USER TEMPLATE
-- name: Get whoami information - domain
-  win_whoami:
-  vars:
-    ansible_become: yes
-    ansible_become_method: runas
-    Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
-    Credential_password: "{{ user_dom_admin_password }}"
-  tags: fromhere
+# - name: Change startup type for Active Directory Web Services service
+#   win_shell: "Set-Service -Name ADWS -StartupType Automatic"
+#   tags: fromhere
   
-- name: Declare PowerShell script to use for USER template
-  set_fact:
-    install_command_user: |-
-      New-ADCSTemplate -DisplayName User-Modified -JSON (Get-Content C:\Temp\User-Modified.json -Raw) -Identity "Domain Users" -AutoEnroll -Publish
-  tags: fromhere
+# - name: Start Active Directory Web Services service
+#   win_shell: "Start-Service -Name ADWS"
+#   tags: fromhere
   
-- name: Show command declared above for USER template
-  debug:
-    var: install_command_user
-    verbosity: 0
-  tags: fromhere
+# # USER TEMPLATE
+# - name: Get whoami information - domain
+#   win_whoami:
+#   vars:
+#     ansible_become: yes
+#     ansible_become_method: runas
+#     Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+#     Credential_password: "{{ user_dom_admin_password }}"
+#   tags: fromhere
   
-- name: Create new user template run as domain admin
-  win_shell: "{{ install_command_user }}"
-  vars:
-    ansible_become: yes
-    ansible_become_method: runas
-    ansible_become_user: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
-    ansible_become_password: "{{ user_dom_admin_password }}"
-  tags: fromhere
+# - name: Declare PowerShell script to use for USER template
+#   set_fact:
+#     install_command_user: |-
+#       New-ADCSTemplate -DisplayName user-modified -JSON (Get-Content C:\temp\user-modified.json -Raw) -Identity "Domain Users" -AutoEnroll -Publish
+#   tags: fromhere
+  
+# - name: Show command declared above for USER template
+#   debug:
+#     var: install_command_user
+#     verbosity: 0
+#   tags: fromhere
+  
+# - name: Create new user template run as domain admin
+#   win_shell: "{{ install_command_user }}"
+#   vars:
+#     ansible_become: yes
+#     ansible_become_method: runas
+#     ansible_become_user: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+#     ansible_become_password: "{{ user_dom_admin_password }}"
+#   tags: fromhere
   
 # - name: WHOAMI
 #   win_command: whoami.exe
@@ -179,7 +179,7 @@
 # - name: Declare PowerShell script to use for USER template
 #   set_fact:
 #     install_command_user: |-
-#       New-ADCSTemplate -DisplayName User-Modified -JSON (Get-Content C:\Temp\User-Modified.json -Raw) -Identity "Domain Users" -AutoEnroll -Publish
+#       New-ADCSTemplate -DisplayName user-modified -JSON (Get-Content C:\temp\user-modified.json -Raw) -Identity "Domain Users" -AutoEnroll -Publish
 
 # - name: Show command declared above for USER template
 #   debug:

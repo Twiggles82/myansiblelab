@@ -4,7 +4,7 @@
   win_shell: Install-PackageProvider -Name Nuget -Force
 
 - name: Create folder for JSON templates to be copied into
-  win_shell: new-item C:\Temp -itemtype directory
+  win_shell: new-item C:\temp -itemtype directory
   ignore_errors: yes
 
 - name: change DNS server
@@ -109,7 +109,7 @@
 - name: Copy COMPUTER-TEMPLATE
   win_copy:
     src: ./computer-modified.json
-    dest: C:\Temp\Computer-Modified.json
+    dest: C:\temp\Computer-Modified.json
 
 - name: Install AdcsTemplate module
   win_shell: "Install-Module AdcsTemplate -Force"
@@ -136,7 +136,7 @@
 - name: Declare PowerShell script to use for COMPUTER template
   set_fact:
     install_command_comp: |-
-      New-ADCSTemplate -DisplayName Computer-Modified -JSON (Get-Content C:\Temp\Computer-Modified.json -Raw) -Identity "Domain Computers" -AutoEnroll -Publish
+      New-ADCSTemplate -DisplayName Computer-Modified -JSON (Get-Content C:\temp\Computer-Modified.json -Raw) -Identity "Domain Computers" -AutoEnroll -Publish
   tags: ocsp
 
 - name: Show command declared above for COMPUTER template
@@ -166,6 +166,7 @@
     ansible_become_password: "{{ comp_dom_admin_password }}"
   tags: ocsp
 
+# ISSUE AT THIS PART WHEN RUNNING THAT SAYS: - fatal: [10.180.25.21]: FAILED! => {"changed": false, "module_version": "5.0.0", "msg": "Failed to invoke DSC Test method: CCertConfig::GetConfig: The system cannot find the file specified. 0x80070002 (WIN32: 2 ERROR_FILE_NOT_FOUND)", "reboot_required": false}
 # # Publish OCSP Template
 # - name: Publish OCSP Template
 #   win_dsc:
