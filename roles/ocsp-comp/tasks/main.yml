@@ -12,6 +12,7 @@
 - name: Deploy ComputerManagementDsc module
   win_psmodule:
     name: ComputerManagementDsc
+    accept_license: yes
     state: present
 
 - name: Add computer to domain
