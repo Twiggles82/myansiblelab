@@ -232,7 +232,7 @@
 
 - name: Create a file based on GptTmpl
   win_template:
-    remote_src: ./GptTmpl.inf
+    src: ./gpttmpl.inf
     dest: C:\Windows\SYSVOL\sysvol\{{ comp_domain_name }}.{{ root_domain_name }}\Policies\{{ '{' + guidregister + '}'}}\Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf
   vars: 
    guidtemplate: "{{ guidregister }}"
