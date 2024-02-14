@@ -11,7 +11,7 @@
   when: not ansible_windows_domain_member
   win_dns_client:
     adapter_names: '*'
-    ipv4_addresses: "{{ hostvars[groups['ad-comp1'][0]]['groups']['ad-comp1'] }}"
+    ipv4_addresses: "{{ hostvars[groups['ad-comp'][0]]['groups']['ad-comp'] }}"
 
 - name: Deploy ComputerManagementDsc module
   win_psmodule:

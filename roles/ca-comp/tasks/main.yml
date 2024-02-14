@@ -11,7 +11,7 @@
   when: not ansible_windows_domain_member
   win_dns_client:
     adapter_names: '*'
-    ipv4_addresses: "{{ hostvars[groups['ad-comp1'][0]]['groups']['ad-comp1'] }}"
+    ipv4_addresses: "{{ hostvars[groups['ad-comp'][0]]['groups']['ad-comp'] }}"
 
 - name: Deploy ComputerManagementDsc module
   win_psmodule:
@@ -32,7 +32,7 @@
 - name: Add computer to domain
   win_dsc:
     resource_name:  Computer
-    Name: 'ca-comp1'
+    Name: 'ca-comp'
     DomainName:  "{{ comp_domain_name }}.{{ root_domain_name }}"
     Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
     Credential_password: "{{ comp_dom_admin_password }}"
@@ -157,7 +157,7 @@
 - name: Modify the existing OCSPResponseSigning template
   ansible.windows.win_powershell:
     script: | 
-      Set-ADCSTemplateACL -DisplayName "OCSP Response Signing" -Identity 'compass.usz.local\OCSP-comp1$' -Enroll -AutoEnroll -Publish
+      Set-ADCSTemplateACL -DisplayName "OCSP Response Signing" -Identity 'compass.usz.local\OCSP-comp$' -Enroll -AutoEnroll -Publish
   vars:
     ansible_become: yes
     ansible_become_method: runas
@@ -177,6 +177,6 @@
   win_dsc:
     resource_name:  AdcsAuthorityInformationAccess
     IsSingleInstance: "Yes"
-    OcspUri: "http://ocsp-comp1.compass.usz.local/ocsp"
+    OcspUri: "http://ocsp-comp.compass.usz.local/ocsp"
     AllowRestartService: True
   tags: ocsp

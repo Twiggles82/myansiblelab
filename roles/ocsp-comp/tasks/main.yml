@@ -1,4 +1,5 @@
 ---
+
 - name: install NuGet
   win_shell: Install-PackageProvider -Name Nuget -Force
 
@@ -6,7 +7,7 @@
   when: not ansible_windows_domain_member
   win_dns_client:
     adapter_names: '*'
-    ipv4_addresses: "{{ hostvars[groups['ad-comp1'][0]]['groups']['ad-comp1'] }}"
+    ipv4_addresses: "{{ hostvars[groups['ad-comp'][0]]['groups']['ad-comp'] }}"
  
 - name: Deploy ComputerManagementDsc module
   win_psmodule:
@@ -16,7 +17,7 @@
 - name: Add computer to domain
   win_dsc:
     resource_name:  Computer
-    Name: 'ocsp-comp1'
+    Name: 'ocsp-comp'
     DomainName:  "{{ comp_domain_name }}.{{ root_domain_name }}"
     Credential_username: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
     Credential_password: "{{ comp_dom_admin_password }}"
@@ -61,10 +62,10 @@
     script: | 
       Install-Module PSPKI -Force
       Import-Module PSPKI -Force
-      $CA = Get-CertificationAuthority "ca-comp1.compass.usz.local" -Enterprise
-      Connect-OnlineResponder "ocsp-comp1.compass.usz.local" | Add-OnlineResponderRevocationConfiguration -Name "usz-comp-ca-ocsp" -CA $ca | Set-OnlineResponderRevocationConfiguration `
+      $CA = Get-CertificationAuthority "ca-comp.compass.usz.local" -Enterprise
+      Connect-OnlineResponder "ocsp-comp.compass.usz.local" | Add-OnlineResponderRevocationConfiguration -Name "usz-comp-ca-ocsp" -CA $ca | Set-OnlineResponderRevocationConfiguration `
         -SigningCertTemplate "OCSPResponseSigning" `
-        -SigningServer "ca-comp1.compass.usz.local" `
+        -SigningServer "ca-comp.compass.usz.local" `
         -SigningFlag "Silent, SigningCertAutoRenewal, ForceDelegatedCert, AutoDiscoverSigningCert, ResponderIdKeyHash, SigningCertAutoEnrollment" `
         -HashAlgorithm (New-Object System.Security.Cryptography.Oid2 "sha256", $true)
   vars:

@@ -6,7 +6,7 @@
   when: not ansible_windows_domain_member
   win_dns_client:
     adapter_names: '*'
-    ipv4_addresses: "{{ hostvars[groups['ad-user1'][0]]['groups']['ad-user1'] }}"
+    ipv4_addresses: "{{ hostvars[groups['ad-user'][0]]['groups']['ad-user'] }}"
  
 - name: Deploy ComputerManagementDsc module
   win_psmodule:
@@ -16,7 +16,7 @@
 - name: Add computer to domain
   win_dsc:
     resource_name:  Computer
-    Name: 'ocsp-user1'
+    Name: 'ocsp-user'
     DomainName:  "{{ user_domain_name }}.{{ root_domain_name }}"
     Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
     Credential_password: "{{ user_dom_admin_password }}"
@@ -61,10 +61,10 @@
     script: | 
       Install-Module PSPKI -Force
       Import-Module PSPKI -Force
-      $CA = Get-CertificationAuthority "ca-user1.ugly.usz.local" -Enterprise
-      Connect-OnlineResponder "ocsp-user1.ugly.usz.local" | Add-OnlineResponderRevocationConfiguration -Name "usz-user-ca-ocsp" -CA $ca | Set-OnlineResponderRevocationConfiguration `
+      $CA = Get-CertificationAuthority "ca-user.ugly.usz.local" -Enterprise
+      Connect-OnlineResponder "ocsp-user.ugly.usz.local" | Add-OnlineResponderRevocationConfiguration -Name "usz-user-ca-ocsp" -CA $ca | Set-OnlineResponderRevocationConfiguration `
         -SigningCertTemplate "OCSPResponseSigning" `
-        -SigningServer "ca-user1.ugly.usz.local" `
+        -SigningServer "ca-user.ugly.usz.local" `
         -SigningFlag "Silent, SigningCertAutoRenewal, ForceDelegatedCert, AutoDiscoverSigningCert, ResponderIdKeyHash, SigningCertAutoEnrollment" `
         -HashAlgorithm (New-Object System.Security.Cryptography.Oid2 "sha256", $true)
   vars:

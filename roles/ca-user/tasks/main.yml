@@ -11,7 +11,7 @@
   when: not ansible_windows_domain_member
   win_dns_client:
     adapter_names: '*'
-    ipv4_addresses: "{{ hostvars[groups['ad-user1'][0]]['groups']['ad-user1'] }}"
+    ipv4_addresses: "{{ hostvars[groups['ad-user'][0]]['groups']['ad-user'] }}"
 
 - name: Deploy ComputerManagementDsc module
   win_psmodule:
@@ -32,7 +32,7 @@
 - name: Add computer to domain
   win_dsc:
     resource_name:  Computer
-    Name: 'ca-user1'
+    Name: 'ca-user'
     DomainName:  "{{ user_domain_name }}.{{ root_domain_name }}"
     Credential_username: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
     Credential_password: "{{ root_dom_admin_password }}"
@@ -109,7 +109,7 @@
   win_dsc:
     resource_name:  AdcsAuthorityInformationAccess
     IsSingleInstance: "Yes"
-    OcspUri: "http://ocsp-user1.ugly.usz.local/ocsp"
+    OcspUri: "http://ocsp-user.ugly.usz.local/ocsp"
     AllowRestartService: True
 
 - name: Copy USER-TEMPLATE
