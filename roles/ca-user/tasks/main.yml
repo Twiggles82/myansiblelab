@@ -81,7 +81,6 @@
     LogDirectory: "C:\\Windows\\system32\\CertLog"
     Ensure: Present
   register: ca_configured
-  tags: fromhere
 
 - name: enable additional features for CA
   win_dsc:
@@ -97,13 +96,12 @@
     - RSAT-ADCS
     - RSAT-ADCS-mgmt
     - AD-Domain-Services
-  tags: fromhere
 
 - name: Web Enrollment feature 
   win_dsc:
     resource_name:  AdcsWebEnrollment
-    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
-    Credential_password: "{{ root_dom_admin_password }}"
+    Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ user_dom_admin_password }}"
     IsSingleInstance: "Yes"
     Ensure: Present
   register: AdcsWebEnrollment_configured
@@ -144,8 +142,8 @@
   vars:
     ansible_become: yes
     ansible_become_method: runas
-    ansible_become_user: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
-    ansible_become_password: "{{ root_dom_admin_password }}"
+    Credential_username: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+    Credential_password: "{{ user_dom_admin_password }}"
   tags: fromhere
   
 - name: Declare PowerShell script to use for USER template
@@ -165,8 +163,8 @@
   vars:
     ansible_become: yes
     ansible_become_method: runas
-    ansible_become_user: "{{ root_dom_admin_username }}@{{ user_domain_name }}"
-    ansible_become_password: "{{ root_dom_admin_password }}"
+    ansible_become_user: "{{ user_dom_admin_username }}@{{ user_domain_name }}.{{ root_domain_name }}"
+    ansible_become_password: "{{ user_dom_admin_password }}"
   tags: fromhere
   
 # - name: WHOAMI
