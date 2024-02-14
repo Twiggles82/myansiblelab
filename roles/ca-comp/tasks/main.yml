@@ -108,7 +108,7 @@
 
 - name: Copy COMPUTER-TEMPLATE
   win_copy:
-    src: ./Computer-Modified.json
+    src: ./computer-modified.json
     dest: C:\Temp\Computer-Modified.json
 
 - name: Install AdcsTemplate module
