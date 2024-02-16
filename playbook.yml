@@ -1,9 +1,9 @@
 ---
-# root domain controller for usz.local
-- hosts: ad-root
-  gather_facts: True
-  roles:
-    - ad-root
+# # root domain controller for usz.local
+# - hosts: ad-root
+#   gather_facts: True
+#   roles:
+#     - ad-root
 
 # comp domain controller for compass.usz.local
 - hosts: ad-comp
@@ -11,11 +11,11 @@
   roles:
     - ad-comp
 
-# computer test desktop
-- hosts: comp-desktop
-  gather_facts: True
-  roles:
-    - comp-desktop
+# # computer test desktop
+# - hosts: comp-desktop
+#   gather_facts: True
+#   roles:
+#     - comp-desktop
 
 # # comp OCSP
 # - hosts: ocsp-comp

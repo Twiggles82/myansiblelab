@@ -285,3 +285,26 @@
 # # The FSMO role ownership could not be verified because its directory partition has not replicated successfully with at least one replication partner
 # - pause:
 #    minutes: 20
+
+- name: "Create ApertusDemoGPO"
+  win_dsc:
+    resource_name: GroupPolicy
+    name: "ApertusDemoGPO"
+    status: allsettingsenabled
+    ensure: present
+
+- name: "Edit ApertusDemoGPO COMPUTER values#1"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "ApertusDemoGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Windows\\Explorer"
+    valuename: "DisableContextMenusInStart"
+    valuetype: "DWORD"
+    value: 1
+
+- name: Link ApertusDemoGPO to compass.usz.local domain
+  win_dsc:
+    resource_name: GPLink
+    GPOName: "ApertusDemoGPO"
+    Path: "DC=compass,DC=usz,DC=local"
+    Enabled: "yes"
