@@ -308,10 +308,3 @@
     GPOName: "ApertusDemoGPO"
     Path: "DC=compass,DC=usz,DC=local"
     Enabled: "yes"
-
-- name: "Create ApertusDemoGPO234"
-  win_dsc:
-    resource_name: GroupPolicy
-    name: "ApertusDemoGPO234"
-    status: allsettingsenabled
-    ensure: present
