@@ -286,25 +286,25 @@
 # # - pause:
 # #    minutes: 20
 
-- name: "Create ApertusDemoGPO1234"
+- name: "Create ApertusDemoGPO9876"
   win_dsc:
     resource_name: GroupPolicy
-    name: "ApertusDemoGPO1234"
+    name: "ApertusDemoGPO9876"
     status: allsettingsenabled
     ensure: present
 
-- name: "Edit ApertusDemoGPO1234 COMPUTER values#1"
+- name: "Edit ApertusDemoGPO9876 COMPUTER values#1"
   win_dsc:
     resource_name: GPRegistryValue
-    name: "ApertusDemoGPO1234"
+    name: "ApertusDemoGPO9876"
     key: "HKLM\\Software\\Policies\\Microsoft\\Windows\\Explorer"
     valuename: "DisableContextMenusInStart"
     valuetype: "DWORD"
     value: 1
 
-- name: Link ApertusDemoGPO1234 to compass.usz.local domain
+- name: Link ApertusDemoGPO9876 to compass.usz.local domain
   win_dsc:
     resource_name: GPLink
-    GPOName: "ApertusDemoGPO1234"
+    GPOName: "ApertusDemoGPO9876"
     Path: "DC=compass,DC=usz,DC=local"
     Enabled: "yes"
