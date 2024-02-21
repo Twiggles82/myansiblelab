@@ -1,290 +1,290 @@
 ---
 
-# - name: install NuGet
-#   win_shell: Install-PackageProvider -Name Nuget -Force
+- name: install NuGet
+  win_shell: Install-PackageProvider -Name Nuget -Force
   
-# - name: ensure required powershell module is present
-#   win_psmodule:
-#     name: ActiveDirectoryDsc
-#     accept_license: yes
-#     state: present
+- name: ensure required powershell module is present
+  win_psmodule:
+    name: ActiveDirectoryDsc
+    accept_license: yes
+    state: present
 
-# - name: change DNS server
-#   when: not ansible_windows_domain_member
-#   win_dns_client:
-#     adapter_names: '*'
-#     ipv4_addresses: "{{ hostvars[groups['ad-root'][0]]['groups']['ad-root'] }}"
+- name: change DNS server
+  when: not ansible_windows_domain_member
+  win_dns_client:
+    adapter_names: '*'
+    ipv4_addresses: "{{ hostvars[groups['ad-root'][0]]['groups']['ad-root'] }}"
 
-# - name: enable windows features
-#   win_dsc:
-#     resource_name: WindowsFeature
-#     Name: "{{ item }}"
-#     IncludeAllSubFeature: True
-#     Ensure: Present
-#   register: install_ad
-#   ignore_errors: yes
-#   loop:
-#     - AD-Domain-Services
-#     - RSAT-AD-PowerShell
-#     - RSAT-AD-TOOLS
-#     - GPMC
+- name: enable windows features
+  win_dsc:
+    resource_name: WindowsFeature
+    Name: "{{ item }}"
+    IncludeAllSubFeature: True
+    Ensure: Present
+  register: install_ad
+  ignore_errors: yes
+  loop:
+    - AD-Domain-Services
+    - RSAT-AD-PowerShell
+    - RSAT-AD-TOOLS
+    - GPMC
 
-# - name: add compass as a child domain
-#   win_dsc:
-#     resource_name: ADDomain
-#     DomainName: "{{ comp_domain_name }}"
-#     ParentDomainName: "{{ root_domain_name }}"
-#     Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
-#     Credential_password: "{{ root_dom_admin_password }}"
-#     SafemodeAdministratorPassword_username: "{{ safe_admin_username }}"
-#     SafemodeAdministratorPassword_password: "{{ safe_admin_password }}"
-#   register: add_domain
-#   ignore_errors: yes
+- name: add compass as a child domain
+  win_dsc:
+    resource_name: ADDomain
+    DomainName: "{{ comp_domain_name }}"
+    ParentDomainName: "{{ root_domain_name }}"
+    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    SafemodeAdministratorPassword_username: "{{ safe_admin_username }}"
+    SafemodeAdministratorPassword_password: "{{ safe_admin_password }}"
+  register: add_domain
+  ignore_errors: yes
 
-# - name: reboot after the domain is added
-#   win_reboot:
-#   when: add_domain.reboot_required
+- name: reboot after the domain is added
+  win_reboot:
+  when: add_domain.reboot_required
 
-# - name: wait for AD domain
-#   win_dsc:
-#     resource_name: WaitForADDomain
-#     DomainName: "{{ comp_domain_name }}"
+- name: wait for AD domain
+  win_dsc:
+    resource_name: WaitForADDomain
+    DomainName: "{{ comp_domain_name }}"
 
-# # Splits the name up so ugly.local becomes 'DC=ugly,DC=local'
-# - name: set parent dn
-#   set_fact:
-#     parent_dn: "DC={{ comp_domain_name.split('.') | join(',DC=') }}"
+# Splits the name up so ugly.local becomes 'DC=ugly,DC=local'
+- name: set parent dn
+  set_fact:
+    parent_dn: "DC={{ comp_domain_name.split('.') | join(',DC=') }}"
 
-# - name: add domain admin comp
-#   win_dsc:
-#     resource_name: ADUser
-#     UserName: "{{ comp_dom_admin_username }}"
-#     UserPrincipalName: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}"
-#     Password_username: "{{ comp_dom_admin_username }}"
-#     Password_password: "{{ comp_dom_admin_password }}"
-#     DomainName: "{{ comp_domain_name }}"
-#     Enabled: True
-#     GivenName: "{{ comp_dom_admin_username }}"
-#     Surname: user
-#     Company: dxc
-#     EmailAddress: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}"
-#     PasswordNeverExpires: True
-#     Ensure: Present
-#   ignore_errors: yes
+- name: add domain admin comp
+  win_dsc:
+    resource_name: ADUser
+    UserName: "{{ comp_dom_admin_username }}"
+    UserPrincipalName: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}"
+    Password_username: "{{ comp_dom_admin_username }}"
+    Password_password: "{{ comp_dom_admin_password }}"
+    DomainName: "{{ comp_domain_name }}"
+    Enabled: True
+    GivenName: "{{ comp_dom_admin_username }}"
+    Surname: user
+    Company: dxc
+    EmailAddress: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}"
+    PasswordNeverExpires: True
+    Ensure: Present
+  ignore_errors: yes
 
-# - name: add comp admin user to Domain Admins group
-#   win_dsc:
-#     resource_name: ADGroup
-#     GroupName: Domain Admins
-#     MembersToInclude: "{{ comp_dom_admin_username }}"
-#   ignore_errors: yes
+- name: add comp admin user to Domain Admins group
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: Domain Admins
+    MembersToInclude: "{{ comp_dom_admin_username }}"
+  ignore_errors: yes
 
-# - name: add domain users
-#   win_dsc:
-#     resource_name: ADUser
-#     UserName: "{{ item.username }}"
-#     UserPrincipalName: "{{ item.username }}@{{ comp_domain_name }}"
-#     Password_username: "{{ item.username }}"
-#     Password_password: "{{ users_password }}"
-#     DomainName: "{{ comp_domain_name }}"
-#     Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
-#     Credential_password: "{{ root_dom_admin_password }}"
-#     Enabled: True
-#     GivenName: "{{ item.name }}"
-#     Surname: user
-#     Company: AnsibleByRedHat
-#     EmailAddress: "{{ item.username }}@{{ comp_domain_name }}"
-#     Ensure: Present
-#   loop: "{{ ad_users }}"
-#   ignore_errors: yes
+- name: add domain users
+  win_dsc:
+    resource_name: ADUser
+    UserName: "{{ item.username }}"
+    UserPrincipalName: "{{ item.username }}@{{ comp_domain_name }}"
+    Password_username: "{{ item.username }}"
+    Password_password: "{{ users_password }}"
+    DomainName: "{{ comp_domain_name }}"
+    Credential_username: "{{ root_dom_admin_username }}@{{ root_domain_name }}"
+    Credential_password: "{{ root_dom_admin_password }}"
+    Enabled: True
+    GivenName: "{{ item.name }}"
+    Surname: user
+    Company: AnsibleByRedHat
+    EmailAddress: "{{ item.username }}@{{ comp_domain_name }}"
+    Ensure: Present
+  loop: "{{ ad_users }}"
+  ignore_errors: yes
 
-# - name: add domain users to groups
-#   win_dsc:
-#     resource_name: ADGroup
-#     GroupName: "{{ item }}"
-#     GroupScope: Universal
-#     MembersToInclude: "{{ ad_users | map(attribute='username') | list }}"
-#   loop:
-#     - AllowRDPCompass
+- name: add domain users to groups
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: "{{ item }}"
+    GroupScope: Universal
+    MembersToInclude: "{{ ad_users | map(attribute='username') | list }}"
+  loop:
+    - AllowRDPCompass
 
-# - name: Add AllowRDPCompass to Built-In Remote Desktop Users
-#   win_dsc:
-#     resource_name: ADGroup
-#     GroupName: "Remote Desktop Users"
-#     MembersToInclude: AllowRDPCompass
+- name: Add AllowRDPCompass to Built-In Remote Desktop Users
+  win_dsc:
+    resource_name: ADGroup
+    GroupName: "Remote Desktop Users"
+    MembersToInclude: AllowRDPCompass
 
-# - name: ensure registry service is running
-#   win_dsc:
-#     resource_name: Service
-#     Name: TermService
-#     StartupType: Automatic
-#     State: Running
+- name: ensure registry service is running
+  win_dsc:
+    resource_name: Service
+    Name: TermService
+    StartupType: Automatic
+    State: Running
 
-# - name: "Install GroupPolicyDSC"
-#   win_psmodule:
-#     name: GroupPolicyDSC
-#     state: present
+- name: "Install GroupPolicyDSC"
+  win_psmodule:
+    name: GroupPolicyDSC
+    state: present
 
-# - name: "Create ComputersGPO"
-#   win_dsc:
-#     resource_name: GroupPolicy
-#     name: "ComputersGPO"
-#     status: allsettingsenabled
-#     ensure: present
+- name: "Create ComputersGPO"
+  win_dsc:
+    resource_name: GroupPolicy
+    name: "ComputersGPO"
+    status: allsettingsenabled
+    ensure: present
 
-# - name: "Edit ComputersGPO COMPUTER values#1"
-#   win_dsc:
-#     resource_name: GPRegistryValue
-#     name: "ComputersGPO"
-#     key: "HKLM\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
-#     valuename: "AEPolicy"
-#     valuetype: "DWORD"
-#     value: 7
+- name: "Edit ComputersGPO COMPUTER values#1"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "ComputersGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
+    valuename: "AEPolicy"
+    valuetype: "DWORD"
+    value: 7
 
-# - name: "Edit ComputersGPO COMPUTER values#2"
-#   win_dsc:
-#     resource_name: GPRegistryValue
-#     name: "ComputersGPO"
-#     key: "HKLM\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
-#     valuename: "OfflineExpirationPercent"
-#     valuetype: "DWORD"
-#     value: 10
+- name: "Edit ComputersGPO COMPUTER values#2"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "ComputersGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
+    valuename: "OfflineExpirationPercent"
+    valuetype: "DWORD"
+    value: 10
 
-# - name: "Edit ComputersGPO COMPUTER values#3"
-#   win_dsc:
-#     resource_name: GPRegistryValue
-#     name: "ComputersGPO"
-#     key: "HKLM\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
-#     valuename: "OfflineExpirationStoreNames"
-#     valuetype: "STRING"
-#     value: MY
+- name: "Edit ComputersGPO COMPUTER values#3"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "ComputersGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Cryptography\\AutoEnrollment"
+    valuename: "OfflineExpirationStoreNames"
+    valuetype: "STRING"
+    value: MY
 
-# - name: "Link ComputersGPO to compass.usz.local domain"
-#   win_dsc:
-#     resource_name: GPLink
-#     GPOName: "ComputersGPO"
-#     Path: "DC=compass,DC=usz,DC=local"
-#     Enabled: "yes"
+- name: "Link ComputersGPO to compass.usz.local domain"
+  win_dsc:
+    resource_name: GPLink
+    GPOName: "ComputersGPO"
+    Path: "DC=compass,DC=usz,DC=local"
+    Enabled: "yes"
 
-# ##########################################################################################################################
-# # Create a GPO that simply enables 'Allow users to connect remotely by using Remote Desktop Services' via a registry entry
-# - name: "Create Allow RDP Connections only GPO"
-#   win_dsc:
-#     resource_name: GroupPolicy
-#     name: "AllowRDPConnectionsOnlyGPO"
-#     status: allsettingsenabled
-#     ensure: present
+##########################################################################################################################
+# Create a GPO that simply enables 'Allow users to connect remotely by using Remote Desktop Services' via a registry entry
+- name: "Create Allow RDP Connections only GPO"
+  win_dsc:
+    resource_name: GroupPolicy
+    name: "AllowRDPConnectionsOnlyGPO"
+    status: allsettingsenabled
+    ensure: present
 
-# - name: "Edit AllowRDPConnectionsOnlyGPO COMPUTER values#1"
-#   win_dsc:
-#     resource_name: GPRegistryValue
-#     name: "AllowRDPConnectionsOnlyGPO"
-#     key: "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Terminal Services"
-#     valuename: "fDenyTSConnections"
-#     valuetype: "DWORD"
-#     value: 0
+- name: "Edit AllowRDPConnectionsOnlyGPO COMPUTER values#1"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "AllowRDPConnectionsOnlyGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Windows NT\\Terminal Services"
+    valuename: "fDenyTSConnections"
+    valuetype: "DWORD"
+    value: 0
 
-# - name: Link AllowRDPConnectionsOnlyGPO to compass.usz.local domain
-#   win_dsc:
-#     resource_name: GPLink
-#     GPOName: "AllowRDPConnectionsOnlyGPO"
-#     Path: "DC=compass,DC=usz,DC=local"
-#     Enabled: "yes"
+- name: Link AllowRDPConnectionsOnlyGPO to compass.usz.local domain
+  win_dsc:
+    resource_name: GPLink
+    GPOName: "AllowRDPConnectionsOnlyGPO"
+    Path: "DC=compass,DC=usz,DC=local"
+    Enabled: "yes"
 
-# ##################################################################################
-# # Create a base GPO for adding restricted groups to Remote Desktop
-# - name: "Create security settings only GPO"
-#   win_dsc:
-#     resource_name: GroupPolicy
-#     name: "AllowRDPSecuritySettingsOnlyGPO"
-#     status: allsettingsenabled
-#     ensure: present
+##################################################################################
+# Create a base GPO for adding restricted groups to Remote Desktop
+- name: "Create security settings only GPO"
+  win_dsc:
+    resource_name: GroupPolicy
+    name: "AllowRDPSecuritySettingsOnlyGPO"
+    status: allsettingsenabled
+    ensure: present
 
-# - name: run command to get GUID of AllowRDPSecuritySettingsOnlyGPO GPO
-#   win_shell: Get-GPO -name AllowRDPSecuritySettingsOnlyGPO | select id | ft -HideTableHeaders | Format-Table | Out-String | ForEach-Object { $_.Trim("`r","`n") }
-#   register: guidregisterfirst
+- name: run command to get GUID of AllowRDPSecuritySettingsOnlyGPO GPO
+  win_shell: Get-GPO -name AllowRDPSecuritySettingsOnlyGPO | select id | ft -HideTableHeaders | Format-Table | Out-String | ForEach-Object { $_.Trim("`r","`n") }
+  register: guidregisterfirst
 
-# - name: Get GPO GUID and save as guidregister
-#   set_fact:
-#     guidregister: "{{ guidregisterfirst.stdout | trim }}"
+- name: Get GPO GUID and save as guidregister
+  set_fact:
+    guidregister: "{{ guidregisterfirst.stdout | trim }}"
 
-# - name: Show command declared above
-#   debug:
-#     var: guidregister
-#     verbosity: 0
+- name: Show command declared above
+  debug:
+    var: guidregister
+    verbosity: 0
 
-# - name: Create folder structure for GptTmpl file to go into
-#   win_shell: new-item "C:\Windows\SYSVOL\sysvol\{{ comp_domain_name }}.{{ root_domain_name }}\Policies\{{ '{' + guidregister + '}'}}\Machine\Microsoft\Windows NT\SecEdit" -itemtype directory
-#   ignore_errors: yes
+- name: Create folder structure for GptTmpl file to go into
+  win_shell: new-item "C:\Windows\SYSVOL\sysvol\{{ comp_domain_name }}.{{ root_domain_name }}\Policies\{{ '{' + guidregister + '}'}}\Machine\Microsoft\Windows NT\SecEdit" -itemtype directory
+  ignore_errors: yes
 
-# - name: run command to get SID of AllowRDPCompass security group
-#   win_shell: Get-ADGroup -Identity AllowRDPCompass | select sid | ft -HideTableHeaders | Format-Table | Out-String | ForEach-Object { $_.Trim("`r","`n") }
-#   register: sidregisterfirst
+- name: run command to get SID of AllowRDPCompass security group
+  win_shell: Get-ADGroup -Identity AllowRDPCompass | select sid | ft -HideTableHeaders | Format-Table | Out-String | ForEach-Object { $_.Trim("`r","`n") }
+  register: sidregisterfirst
 
-# - name: Get GPO GUID and save as sidregister
-#   set_fact:
-#     sidregister: "{{ sidregisterfirst.stdout | trim }}"
+- name: Get GPO GUID and save as sidregister
+  set_fact:
+    sidregister: "{{ sidregisterfirst.stdout | trim }}"
 
-# - name: Show command declared above
-#   debug:
-#     var: sidregister
-#     verbosity: 0
+- name: Show command declared above
+  debug:
+    var: sidregister
+    verbosity: 0
 
-# - name: Create a file based on GptTmpl
-#   win_template:
-#     src: ./gpttmpl.inf
-#     dest: C:\Windows\SYSVOL\sysvol\{{ comp_domain_name }}.{{ root_domain_name }}\Policies\{{ '{' + guidregister + '}'}}\Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf
-#   vars: 
-#    guidtemplate: "{{ guidregister }}"
+- name: Create a file based on GptTmpl
+  win_template:
+    src: ./gpttmpl.inf
+    dest: C:\Windows\SYSVOL\sysvol\{{ comp_domain_name }}.{{ root_domain_name }}\Policies\{{ '{' + guidregister + '}'}}\Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf
+  vars: 
+   guidtemplate: "{{ guidregister }}"
 
-# ############################################################################################################################################################################################
-# # Set the relevant gPCMachineExtensionNames value against the GPO GUID of AllowRDPSecuritySettingsOnlyGPO to make the settings show (that were imported via the GptTmpl.ini file) in the GUI
+############################################################################################################################################################################################
+# Set the relevant gPCMachineExtensionNames value against the GPO GUID of AllowRDPSecuritySettingsOnlyGPO to make the settings show (that were imported via the GptTmpl.ini file) in the GUI
 
-# - name: run command to get Common Name of AllowRDPSecuritySettingsOnlyGPO GPO
-#   win_shell: Get-ADObject -Filter {(ObjectClass -eq 'groupPolicyContainer' -and displayName -eq 'AllowRDPSecuritySettingsOnlyGPO')} -Properties displayName | select DistinguishedName | ft -HideTableHeaders | Format-Table | Out-String | ForEach-Object { $_.Trim("`r","`n") }
-#   register: getcommonname
+- name: run command to get Common Name of AllowRDPSecuritySettingsOnlyGPO GPO
+  win_shell: Get-ADObject -Filter {(ObjectClass -eq 'groupPolicyContainer' -and displayName -eq 'AllowRDPSecuritySettingsOnlyGPO')} -Properties displayName | select DistinguishedName | ft -HideTableHeaders | Format-Table | Out-String | ForEach-Object { $_.Trim("`r","`n") }
+  register: getcommonname
 
-# - name: Get commonname and save as savedcommonname
-#   set_fact:
-#     savedcommonname: "{{ getcommonname.stdout | trim }}"
+- name: Get commonname and save as savedcommonname
+  set_fact:
+    savedcommonname: "{{ getcommonname.stdout | trim }}"
 
-# - name: Show commonname with its formatting
-#   debug:
-#     var: savedcommonname
-#     verbosity: 0
+- name: Show commonname with its formatting
+  debug:
+    var: savedcommonname
+    verbosity: 0
 
-# - name: Edit Group Policy container within Active Directory with relevant gPCMachineExtensionNames value
-#   win_shell: Set-ADObject -Identity "{{ savedcommonname }}" -Replace @{gPCMachineExtensionNames="[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"}
-#   ignore_errors: yes
-#   vars:
-#     ansible_become: yes
-#     ansible_become_method: runas
-#     ansible_become_user: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
-#     ansible_become_password: "{{ comp_dom_admin_password }}"
+- name: Edit Group Policy container within Active Directory with relevant gPCMachineExtensionNames value
+  win_shell: Set-ADObject -Identity "{{ savedcommonname }}" -Replace @{gPCMachineExtensionNames="[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"}
+  ignore_errors: yes
+  vars:
+    ansible_become: yes
+    ansible_become_method: runas
+    ansible_become_user: "{{ comp_dom_admin_username }}@{{ comp_domain_name }}.{{ root_domain_name }}"
+    ansible_become_password: "{{ comp_dom_admin_password }}"
 
-# # This is an additional GPO change to bring the AllowRDPSecuritySettingsOnlyGPO GPO to life. Otherwise just creating the GptTmpl.inf file in the domain path and setting 
-# # the gPCMachineExtensionNames value doesn't take effect. It will show in GPMC GUI but not take effect until a.n.other change (i.e. this one) is made to the GPO.
-# # All this setting does is "Remove recently added list from the start menu"
-# - name: "Edit AllowRDPSecuritySettingsOnlyGPO COMPUTER values#1"
-#   win_dsc:
-#     resource_name: GPRegistryValue
-#     name: "AllowRDPSecuritySettingsOnlyGPO"
-#     key: "HKLM\\Software\\Policies\\Microsoft\\Windows\\Explorer"
-#     valuename: "HideRecentlyAddedApps"
-#     valuetype: "DWORD"
-#     value: 1
+# This is an additional GPO change to bring the AllowRDPSecuritySettingsOnlyGPO GPO to life. Otherwise just creating the GptTmpl.inf file in the domain path and setting 
+# the gPCMachineExtensionNames value doesn't take effect. It will show in GPMC GUI but not take effect until a.n.other change (i.e. this one) is made to the GPO.
+# All this setting does is "Remove recently added list from the start menu"
+- name: "Edit AllowRDPSecuritySettingsOnlyGPO COMPUTER values#1"
+  win_dsc:
+    resource_name: GPRegistryValue
+    name: "AllowRDPSecuritySettingsOnlyGPO"
+    key: "HKLM\\Software\\Policies\\Microsoft\\Windows\\Explorer"
+    valuename: "HideRecentlyAddedApps"
+    valuetype: "DWORD"
+    value: 1
 
-# - name: Link AllowRDPSecuritySettingsOnlyGPO to compass.usz.local domain
-#   win_dsc:
-#     resource_name: GPLink
-#     GPOName: "AllowRDPSecuritySettingsOnlyGPO"
-#     Path: "DC=compass,DC=usz,DC=local"
-#     Enabled: "yes"
+- name: Link AllowRDPSecuritySettingsOnlyGPO to compass.usz.local domain
+  win_dsc:
+    resource_name: GPLink
+    GPOName: "AllowRDPSecuritySettingsOnlyGPO"
+    Path: "DC=compass,DC=usz,DC=local"
+    Enabled: "yes"
 
-# # # This is to give computers/compass domain time to replicate and negotiate else you get the error: - 
-# # # The FSMO role ownership could not be verified because its directory partition has not replicated successfully with at least one replication partner
-# # - pause:
-# #    minutes: 20
+# # This is to give computers/compass domain time to replicate and negotiate else you get the error: - 
+# # The FSMO role ownership could not be verified because its directory partition has not replicated successfully with at least one replication partner
+# - pause:
+#    minutes: 20
 
 - name: "Create ApertusDemoGPO9876"
   win_dsc:
